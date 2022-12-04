@@ -96,8 +96,13 @@ const defaultState: MatrixTableState = {
 const reducer = (state: MatrixTableState, action: MatrixAction): MatrixTableState => {
     switch (action.type) {
         case 'SET_MATRIX':
+            console.log(action.payload)
+            console.log(state)
+            console.log({
+                ...state, matrix: action.payload
+            })
             return {
-                ...state,
+                ...state, matrix: action.payload
             }
         case 'SET_ORIGINAL_MATRIX':
             return {

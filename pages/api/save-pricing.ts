@@ -1,5 +1,5 @@
-import { z } from 'zod'
-
+import {z} from 'zod'
+import * as fs from "fs";
 
 
 // This is the Zod validation schema, you define
@@ -7,28 +7,27 @@ import { z } from 'zod'
 // the validation during the request lifecycle.
 // If you prefer to use your own way of validating the 
 // incoming data, you can use it.
-const Body = z.object({
-
-})
+const Body = z.object({})
 
 export default async (req: import('next').NextApiRequest, res: import('next').NextApiResponse) => {
-  try {
-    // This will throw when the validation fails
-    const data = await Body.safeParse(req.body)
+    try {
+        // This will throw when the validation fails
+        const body = req.body
 
-    // Write the new matrix to public/pricing.json
+        console.log(body)
+        // Write the new matrix to public/pricing.json
+        fs.writeFileSync("public/pricing.json", JSON.stringify(body, null, 2));
+        res.statusCode = 200
+        res.json(body)
+    } catch (e) {
+        console.error(e)
+        // if(e) {
+        // Handle the validation error and return a proper response
 
-    res.statusCode = 200
-    res.json(data)
-  } catch(e) {
-    console.error(e)
-    // if(e) {
-      // Handle the validation error and return a proper response
+        // return
+        // }
 
-      // return
-    // }
-    
-    res.statusCode = 500
-    res.json({ error: 'Unknown Error' })
-  }
+        res.statusCode = 500
+        res.json({error: 'Unknown Error'})
+    }
 }

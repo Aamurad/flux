@@ -1,5 +1,5 @@
 import classnames from 'classnames'
-import React, {useContext, useState} from 'react'
+import React, {useContext, useEffect, useState} from 'react'
 import {MatrixTableContext, MatrixTableContextProvider} from './context'
 import {
     Table,
@@ -38,29 +38,43 @@ type Props = {
  */
 const MatrixTable: import('react').FC<Omit<Props, 'initialMatrix'>> = ({className, children, ...props}) => {
     // State ------------------------------------------------------------------- //
-    const [{matrix,originalMatrix}, dispatch] = useContext(MatrixTableContext)
+    const [{matrix}, dispatch] = useContext(MatrixTableContext)
+    const [originalMatrix, setOriginalMatrix] = useState(matrix)
     let [isEdit, setEdit] = useState(false)
     // Handlers ---------------------------------------------------------------- //
     // You can save (to api) the matrix here. Remember to update originalMatrix when done.
     const save = async () => {
-        console.log("test")
-        dispatch({type: 'SET_ORIGINAL_MATRIX', payload: matrix})
+        await fetch('/api/save-pricing', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(matrix)
+        })
     }
 
-    const handleChange = (event) => {
-        console.log(event.target.value)
+    const handleChange = (event, term: string, pkg: string) => {
+        matrix[term][pkg] = event.target.value
+        if (pkg === 'lite') {
+            matrix[term]['standard'] = event.target.value * 2
+            matrix[term]['unlimited'] = event.target.value * 3
+        }
+        console.log(matrix)
+        dispatch({type: 'SET_MATRIX', payload: matrix})
     }
     const editTable = () => {
         setEdit(!isEdit)
-        console.log(isEdit);
     }
     const clearTable = () => {
-        dispatch({type: 'SET_MATRIX', metadata: {resetToEmpty: true}})
-        console.log(isEdit);
     }
-
+    const cancelEdit = () => {
+        setEdit(!isEdit)
+        console.log(matrix);
+        console.log(originalMatrix);
+        dispatch({type: 'SET_MATRIX', payload: originalMatrix})
+    }
     // Effects ----------------------------------------------------------------- //
-
+        useEffect(() => {console.log(matrix)}, [matrix])
     // Rendering --------------------------------------------------------------- //
     return (
         <div className={classnames(['container', className])} {...props}>
@@ -201,22 +215,24 @@ const MatrixTable: import('react').FC<Omit<Props, 'initialMatrix'>> = ({classNam
                     <Thead>
                         <Tr>
                             <Th></Th>
-                        {Object.keys(matrix.mtm).map((key, index) => {
-                            return <Th>{key}</Th>
-                        })}
+                            {Object.keys(matrix.mtm).map((key, index) => {
+                                return <Th key={key + index}>{key}</Th>
+                            })}
                         </Tr>
                     </Thead>
                     <Tbody>
-                        {Object.keys(matrix).map((key, index) => {
-                            return <Tr>
-                                <Td>{key}</Td>
-                                {Object.keys(matrix[key]).map((key2, index2) => {
-                                    return <Td>
-                                        {/*{matrix[key][key2]}*/}
-                                        <Editable defaultValue={matrix[key][key2].toString()} isDisabled={!isEdit}>
-                                            <EditablePreview />
-                                            <Input as={EditableInput} onChange={handleChange}/>
-                                        </Editable>
+                        {Object.keys(matrix).map((term, index) => {
+                            return <Tr key={"tr" + term}>
+                                <Td key={"td" + term}>{term}</Td>
+                                {Object.keys(matrix[term]).map((pkg, index2) => {
+                                    return <Td key={"td" + pkg + index}>
+                                        <input type="number"
+                                               placeholder={matrix[term][pkg]}
+                                               defaultValue={matrix[term][pkg]}
+                                               disabled={!isEdit}
+                                               onChange={(e) => {
+                                                   handleChange(e, term, pkg)
+                                               }}/>
                                     </Td>
                                 })}
                             </Tr>
@@ -236,7 +252,7 @@ const MatrixTable: import('react').FC<Omit<Props, 'initialMatrix'>> = ({classNam
                     </WrapItem>
                     <WrapItem>
                         <Button colorScheme='blue' onClick={() => {
-                            editTable()
+                            cancelEdit()
                         }} hidden={!isEdit}>Cancel</Button>
                     </WrapItem>
                     <WrapItem>
@@ -257,8 +273,7 @@ const MatrixTableWithContext: import('react').FC<Props> = ({...props}) => {
     // Remember that you should try to reflect the state of pricing in originalMatrix.
     // matrix will hold the latest value (edited or same as originalMatrix)
     const fetcher = (url: string) => fetch(url).then((res) => res.json())
-    const { data, error } = useSWR('/api/pricing', fetcher)
-    console.log(data)
+    const {data, error} = useSWR('/api/pricing', fetcher)
 
     return (
         <MatrixTableContextProvider initialMatrix={data}>
